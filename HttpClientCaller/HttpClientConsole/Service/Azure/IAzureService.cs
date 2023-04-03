@@ -8,6 +8,6 @@ namespace HttpClientConsole.Service.Azure
 {
     internal interface IAzureService
     {
-        IList<Models.Sample> GetAzureData();
+        Task<IList<Models.Sample>> GetAzureData();
     }
 }

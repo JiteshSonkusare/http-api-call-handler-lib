@@ -1,108 +1,104 @@
 ﻿using NLog;
 using System.Diagnostics;
-using HttpClientApiCaller.Exceptions;
-using HttpClientApiCaller.Configuration;
 using HttpClientApiCaller.Security;
-using System.Net.Mime;
-using HttpClientApiCaller.Helpers;
+using HttpClientApiCaller.Configuration;
 
 namespace HttpClientApiCaller.Client
 {
     public abstract class ApiClientBase : IDisposable
     {
+        private bool disposedValue;
         protected ILogger Logger { get; }
-        private readonly HttpClient _client;
+        private readonly IApiClientConfig _config;
         private readonly IAuthHandler _authHandler;
+        private readonly SocketsHttpHandler httpHandler;
 
         protected ApiClientBase(ILogger logger, IApiClientConfig config, IAuthHandler authHandler)
         {
             Logger = logger;
+            _config = config;
             _authHandler = authHandler;
-            _client = new HttpClient
+            httpHandler = new SocketsHttpHandler()
             {
-                BaseAddress = new Uri(config?.BaseUrl ?? throw new ArgumentNullException(nameof(config))),
-                Timeout = config?.Timeout ?? new TimeSpan(0, 0, 15)
+                UseCookies = false,
+                PooledConnectionIdleTimeout = TimeSpan.FromSeconds(30),
+                PooledConnectionLifetime = TimeSpan.FromSeconds(55),
+                KeepAlivePingPolicy = HttpKeepAlivePingPolicy.Always,
+                KeepAlivePingDelay = TimeSpan.FromSeconds(2),
+                KeepAlivePingTimeout = TimeSpan.FromSeconds(1)
             };
-            AddDefaultHeaders(new string[] { MediaTypeNames.Application.Json });
         }
 
-        private ResponseData ExecuteRequest(HttpRequestMessage request, CancellationToken cancellation)
+        private HttpClient CreateClient()
+        {
+            HttpClient client = new HttpClient(httpHandler, false) { Timeout = _config?.Timeout ?? TimeSpan.FromSeconds(15) };
+            if (!string.IsNullOrWhiteSpace(_config?.BaseUrl))
+                client.BaseAddress = new Uri(_config.BaseUrl);
+
+            DefaultRequestHeaders defaultRequestHeaders = GetDefaultRequestHeaders();
+            if (defaultRequestHeaders?.AcceptedMediaTypes?.Length > 0)
+            {
+                foreach (string mediaType in defaultRequestHeaders.AcceptedMediaTypes)
+                    client.DefaultRequestHeaders?.Accept.ParseAdd(mediaType);
+            }
+            if (defaultRequestHeaders?.Headers?.Count() > 0)
+            {
+                foreach (HeaderData header in defaultRequestHeaders.Headers)
+                    client.DefaultRequestHeaders?.Add(header.Name, header.Values);
+            }
+            return client;
+        }
+
+        protected abstract DefaultRequestHeaders GetDefaultRequestHeaders();
+
+        protected async Task<ResponseData> Send(Uri requestUri, HttpMethod method, HttpContent requestContent, CancellationToken cancellation, params HeaderData[] requestHeaders)
         {
             try
             {
+                using HttpClient client = CreateClient();
                 if (_authHandler != null)
-                    _client.DefaultRequestHeaders.Authorization = _authHandler.GetAuthToken(cancellation)?.GetAuthorizationHeader();
-                HttpResponseMessage? response = null;
-                Exception? taskError = null;
+                {
+                    var token = await _authHandler.GetAuthToken(cancellation).ConfigureAwait(false);
+                    client.DefaultRequestHeaders.Authorization = token.GetAuthorizationHeader();
+                }
+                using HttpRequestMessage request = new HttpRequestMessage(method, requestUri);
+                if (requestContent != null)
+                    request.Content = requestContent;
+                if (requestHeaders != null)
+                    foreach (var header in requestHeaders)
+                        request.Headers.Add(header.Name, header.Values);
+
+                Logger.Debug($"Executing HTTP request. BaseUri:{client.BaseAddress}, TargetUri:{requestUri}, Method:{method}.");
+                Logger.Trace($"HTTP Request : {request}");
+
                 var stopwatch = new Stopwatch();
-                Logger.Log(LogLevel.Trace, $"ExecuteRequest: {request.Method} request headers: \n {request.Headers.ToJson()}");
                 stopwatch.Start();
-                _client.SendAsync(request, cancellation).ContinueWith(task =>
-                {
-                    stopwatch.Stop();
-                    //Logger.Log(LogLevel.Debug, $"{request.Method} HTTP request completed with status: {task.Result.StatusCode} in {stopwatch.ElapsedMilliseconds} ms.");
-                    if (task.Exception != null)
-                        taskError = task.Exception;
-                    else
-                        response = task.Result;
-                }, cancellation).Wait(cancellation);
-                if (taskError != null)
-                    throw taskError;
-                if (response == null)
-                    throw new GeneralApplicationException("Unknown error! Could not retrieve response.");
+                using HttpResponseMessage response = await client.SendAsync(request, cancellation).ConfigureAwait(false);
+                if (!response.IsSuccessStatusCode)
+                    Logger.Warn($"Unsuccessful status ({response.StatusCode}) received.");
+                string responseContent = await response.Content.ReadAsStringAsync(cancellation).ConfigureAwait(false);
+                stopwatch.Stop();
 
-                string content = string.Empty;
-                response.Content.ReadAsStringAsync(cancellation).ContinueWith(task =>
-                {
-                    Logger.Log(LogLevel.Trace, $"RAW response content from URI={request?.RequestUri?.AbsoluteUri}: {task.Result} (status={response.StatusCode})");
-                    if (task.Exception != null)
-                        taskError = task.Exception;
-                    else
-                        content = task.Result;
-                }, cancellation).Wait(cancellation);
-                if (taskError != null)
-                    throw taskError;
+                Logger.Trace($"HTTP Response : {response}");
+                Logger.Debug($"HTTP request completed in {stopwatch.ElapsedMilliseconds} milliseconds.");
 
-                var responseHeaders = new List<HeaderData>();
-                responseHeaders.AddRange(response.Headers.Select(H => new HeaderData(true, H.Key, H.Value.ToArray())));
-                return new ResponseData(response.StatusCode, content, responseHeaders.ToArray());
+                return new ResponseData(response.StatusCode, responseContent, response.Headers, response.TrailingHeaders);
             }
             catch (Exception ex)
             {
-                Logger.Log(LogLevel.Error, "Error occurred while executing HTTP request.", ex.Message);
-                throw new GeneralApplicationException("Error occurred while executing HTTP request.", ex);
+                Logger.Error(ex, "Error occurred while executing HTTP request.");
+                throw;
             }
         }
 
-        protected void AddDefaultHeaders(string[] acceptedMediaTypes, params HeaderData[] headers)
+        public void Dispose()
         {
-            foreach (string mediaType in acceptedMediaTypes)
-                _client.DefaultRequestHeaders.Accept.ParseAdd(mediaType);
-            foreach (HeaderData header in headers)
-                _client.DefaultRequestHeaders.Add(header.Name, header.Values);
+            if (!disposedValue)
+            {
+                httpHandler.Dispose();
+                disposedValue = true;
+            }
+            GC.SuppressFinalize(this);
         }
-
-        protected void Send(Uri requestUri, HttpMethod method, Action<ResponseData> responseParser, CancellationToken cancellation, params HeaderData[] requestHeaders)
-        {
-            var message = new HttpRequestMessage(method, requestUri);
-            foreach (var header in requestHeaders)
-                message.Headers.Add(header.Name, header.Values);
-            var result = ExecuteRequest(message, cancellation);
-            responseParser.Invoke(result);
-        }
-
-        protected void Send(Uri requestUri, HttpMethod method, HttpContent content, Action<ResponseData> responseParser, CancellationToken cancellation, params HeaderData[] requestHeaders)
-        {
-            var message = new HttpRequestMessage(method, requestUri);
-            if (content != null)
-                message.Content = content;
-            if (requestHeaders != null)
-                foreach (var header in requestHeaders)
-                    message.Headers.Add(header.Name, header.Values);
-            var result = ExecuteRequest(message, cancellation);
-            responseParser.Invoke(result);
-        }
-
-        void IDisposable.Dispose() => _client.Dispose();
     }
 }

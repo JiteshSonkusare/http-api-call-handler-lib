@@ -8,6 +8,6 @@ namespace HttpClientConsole.Service.Samples
 {
     internal interface ISampleService
     {
-        IList<Models.Sample> GetSampleData();
+        Task<IList<Models.Sample>> GetSampleData();
     }
 }

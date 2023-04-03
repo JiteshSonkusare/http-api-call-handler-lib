@@ -24,30 +24,55 @@ namespace HttpClientConsole.Clients
             }
         }
 
-        public Response<IList<Models.Sample>>? GetData(CancellationToken cancellation)
+        public async Task<Response<IList<Models.Sample>>>? GetData(CancellationToken cancellation)
         {
             string endpointUri = SampleEndpoints.GetAll;
-            Response<IList<Models.Sample>>? response = null;
-            try
-            {
-                Send(new Uri(endpointUri, UriKind.Relative),
-                                     HttpMethod.Get,
-                                     result =>
-                                     {
-                                         if (result.StatusCode == (int)HttpStatusCode.OK)
-                                             response = new Response<IList<Models.Sample>>(result, result.StatusCode);
-                                         else
-                                             throw new GeneralApplicationException(result.Content);
-                                     },
-                                     cancellation);
+            ResponseData result = await Send(
+                    new Uri(endpointUri, UriKind.Relative),
+                    HttpMethod.Get,
+                    new StringContent(string.Empty),
+                    cancellation,
+                    Array.Empty<HeaderData>()
+                ).ConfigureAwait(false);
 
-                return response;
-            }
-            catch (Exception ex)
+            if (result.StatusCode != (int)HttpStatusCode.OK)
             {
-                Logger.Log(LogLevel.Error, "Get Employee Failed!", ex.Message);
-                throw new GeneralApplicationException("Get Sample Failed!", ex);
+                throw new GeneralApplicationException(result.Content);
             }
+
+            Response<IList<Models.Sample>>? response = new Response<IList<Models.Sample>>(result, result.StatusCode);
+            return response;
         }
+
+        protected override DefaultRequestHeaders GetDefaultRequestHeaders()
+        {
+            return new DefaultRequestHeaders(new string[] { System.Net.Mime.MediaTypeNames.Application.Json }, Array.Empty<HeaderData>());
+        }
+
+        //public Response<IList<Models.Sample>>? GetData(CancellationToken cancellation)
+        //{
+        //    string endpointUri = SampleEndpoints.GetAll;
+        //    Response<IList<Models.Sample>>? response = null;
+        //    try
+        //    {
+        //        Send(new Uri(endpointUri, UriKind.Relative),
+        //                             HttpMethod.Get,
+        //                             result =>
+        //                             {
+        //                                 if (result.StatusCode == (int)HttpStatusCode.OK)
+        //                                     response = new Response<IList<Models.Sample>>(result, result.StatusCode);
+        //                                 else
+        //                                     throw new GeneralApplicationException(result.Content);
+        //                             },
+        //                             cancellation);
+
+        //        return response;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Logger.Log(LogLevel.Error, "Get Employee Failed!", ex.Message);
+        //        throw new GeneralApplicationException("Get Sample Failed!", ex);
+        //    }
+        //}
     }
 }

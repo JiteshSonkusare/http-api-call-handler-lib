@@ -18,10 +18,10 @@ namespace HttpClientConsole.Service.Azure
             _option = option.Value;
         }
 
-        public IList<Models.Sample> GetAzureData()
+        public async Task<IList<Models.Sample>> GetAzureData()
         {
             var client = new AzureApiClient(_logger, _option, null);
-            var result = client.GetData(CancellationToken.None);
+            var result = await client.GetData(CancellationToken.None);
             return result.Data;
         }
     }

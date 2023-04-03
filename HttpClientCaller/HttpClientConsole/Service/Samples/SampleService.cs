@@ -1,9 +1,7 @@
 ﻿using HttpClientApiCaller.Helpers;
 using HttpClientConsole.Clients;
 using HttpClientConsole.Configuration;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using NLog;
 
 namespace HttpClientConsole.Service.Samples
 {
@@ -18,10 +16,10 @@ namespace HttpClientConsole.Service.Samples
             _logger = logger;
         }
 
-        public IList<Models.Sample> GetSampleData()
+        public async Task<IList<Models.Sample>> GetSampleData()
         {
             var client = new SampleApiClient(_logger, _option, null);
-            var result = client.GetData(CancellationToken.None);
+            var result = await client.GetData(CancellationToken.None);
             _logger.Info(result.ToJson());
             return result.Data;
         }

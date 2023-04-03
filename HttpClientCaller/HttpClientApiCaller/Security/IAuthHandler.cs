@@ -2,6 +2,6 @@
 {
     public interface IAuthHandler
     {
-        IAuthToken GetAuthToken(CancellationToken cancellation);
+        Task<IAuthToken> GetAuthToken(CancellationToken cancellation);
     }
 }

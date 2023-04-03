@@ -42,8 +42,8 @@ var host = Host.CreateDefaultBuilder()
 
 var sampleService = host.Services.GetRequiredService<ISampleService>();
 var azureService = host.Services.GetRequiredService<IAzureService>();
-var sampleData = sampleService.GetSampleData();
-var azureData = azureService.GetAzureData();
+var sampleData = await sampleService.GetSampleData();
+var azureData = await azureService.GetAzureData();
 Console.WriteLine($"Sample -- Api -- Data: {sampleData.ToJson()}");
 Console.WriteLine("---------------------------------------------------");
 Console.WriteLine($"Azure -- Api -- Data: {azureData.ToJson()}");
