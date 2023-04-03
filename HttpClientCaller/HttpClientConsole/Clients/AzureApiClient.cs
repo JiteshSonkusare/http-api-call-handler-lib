@@ -4,12 +4,7 @@ using HttpClientApiCaller.Security;
 using HttpClientConsole.Configuration;
 using HttpClientConsole.Routes;
 using NLog;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace HttpClientConsole.Clients
 {
@@ -30,7 +25,7 @@ namespace HttpClientConsole.Clients
             ResponseData result = await Send(
                     new Uri(endpointUri, UriKind.Relative),
                     HttpMethod.Get,
-                    new StringContent(string.Empty),
+                    null,
                     cancellation,
                     Array.Empty<HeaderData>()
                 ).ConfigureAwait(false);
@@ -48,31 +43,5 @@ namespace HttpClientConsole.Clients
         {
             return new DefaultRequestHeaders(new string[] { System.Net.Mime.MediaTypeNames.Application.Json }, Array.Empty<HeaderData>());
         }
-
-        //public Response<IList<Models.Sample>>? GetData(CancellationToken cancellation)
-        //{
-        //    string endpointUri = SampleEndpoints.GetAll;
-        //    Response<IList<Models.Sample>>? response = null;
-        //    try
-        //    {
-        //        Send(new Uri(endpointUri, UriKind.Relative),
-        //                             HttpMethod.Get,
-        //                             result =>
-        //                             {
-        //                                 if (result.StatusCode == (int)HttpStatusCode.OK)
-        //                                     response = new Response<IList<Models.Sample>>(result, result.StatusCode);
-        //                                 else
-        //                                     throw new GeneralApplicationException(result.Content);
-        //                             },
-        //                             cancellation);
-
-        //        return response;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Logger.Log(LogLevel.Error, "Get Employee Failed!", ex.Message);
-        //        throw new GeneralApplicationException("Get Sample Failed!", ex);
-        //    }
-        //}
     }
 }

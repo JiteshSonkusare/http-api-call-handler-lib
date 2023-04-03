@@ -25,7 +25,7 @@ namespace HttpClientConsole.Clients
             ResponseData result = await Send(
                     new Uri(endpointUri, UriKind.Relative),
                     HttpMethod.Get,
-                    new StringContent(string.Empty),
+                    null,
                     cancellation,
                     Array.Empty<HeaderData>()
                 ).ConfigureAwait(false);

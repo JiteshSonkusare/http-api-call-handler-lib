@@ -1,6 +1,7 @@
 ﻿using NLog;
 using System.Diagnostics;
 using HttpClientApiCaller.Security;
+using HttpClientApiCaller.Exceptions;
 using HttpClientApiCaller.Configuration;
 
 namespace HttpClientApiCaller.Client
@@ -31,7 +32,11 @@ namespace HttpClientApiCaller.Client
 
         private HttpClient CreateClient()
         {
-            HttpClient client = new HttpClient(httpHandler, false) { Timeout = _config?.Timeout ?? TimeSpan.FromSeconds(15) };
+            HttpClient client = new HttpClient(httpHandler, false) 
+            { 
+                Timeout = _config?.Timeout ?? TimeSpan.FromSeconds(15) 
+            };
+            
             if (!string.IsNullOrWhiteSpace(_config?.BaseUrl))
                 client.BaseAddress = new Uri(_config.BaseUrl);
 
@@ -51,7 +56,7 @@ namespace HttpClientApiCaller.Client
 
         protected abstract DefaultRequestHeaders GetDefaultRequestHeaders();
 
-        protected async Task<ResponseData> Send(Uri requestUri, HttpMethod method, HttpContent requestContent, CancellationToken cancellation, params HeaderData[] requestHeaders)
+        protected async Task<ResponseData> Send(Uri requestUri, HttpMethod method, HttpContent? requestContent, CancellationToken cancellation, params HeaderData[]? requestHeaders)
         {
             try
             {
@@ -87,7 +92,7 @@ namespace HttpClientApiCaller.Client
             catch (Exception ex)
             {
                 Logger.Error(ex, "Error occurred while executing HTTP request.");
-                throw;
+                throw new GeneralApplicationException($"Failed to call api in ApiClientBase", ex);
             }
         }
 

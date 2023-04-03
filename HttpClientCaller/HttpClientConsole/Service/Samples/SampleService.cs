@@ -20,7 +20,7 @@ namespace HttpClientConsole.Service.Samples
         {
             var client = new SampleApiClient(_logger, _option, null);
             var result = await client.GetData(CancellationToken.None);
-            _logger.Info(result.ToJson());
+            //_logger.Info(result.ToJson());
             return result.Data;
         }
     }

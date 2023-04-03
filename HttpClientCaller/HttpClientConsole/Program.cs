@@ -1,29 +1,26 @@
-﻿using HttpClientApiCaller.Helpers;
-using HttpClientConsole.Configuration;
+﻿using NLog;
+using NLog.Web;
+using NLog.Extensions.Logging;
+using HttpClientApiCaller.Helpers;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using HttpClientConsole.Service.Azure;
+using HttpClientConsole.Configuration;
 using HttpClientConsole.Service.Samples;
-using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using NLog;
-using NLog.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
-using NLog.Web;
-using System;
 
 var host = Host.CreateDefaultBuilder()
     .ConfigureServices((context, services) =>
     {
-        services.AddLogging(loggingBuilder =>
-         {
-             loggingBuilder.ClearProviders();
-             loggingBuilder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
-             loggingBuilder.AddNLog(context.Configuration.GetSection("NLog"));
-         });
-        var logger = NLogBuilder.ConfigureNLog(LogManager.Configuration).GetCurrentClassLogger();
+        var config = new ConfigurationBuilder()
+                    .SetBasePath(System.IO.Directory.GetCurrentDirectory())
+                    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                    .Build();
+        LogManager.Configuration = new NLogLoggingConfiguration(config.GetSection("NLog"));
+        var logger = LogManager.Setup()
+                               .LoadConfigurationFromAppSettings()
+                               .GetCurrentClassLogger();
 
         services.Configure<SampleApiClientConfig>(context.Configuration.GetSection(nameof(SampleApiClientConfig)));
         services.Configure<AzureApiClientConfig>(context.Configuration.GetSection(nameof(AzureApiClientConfig))); 
@@ -48,6 +45,3 @@ Console.WriteLine($"Sample -- Api -- Data: {sampleData.ToJson()}");
 Console.WriteLine("---------------------------------------------------");
 Console.WriteLine($"Azure -- Api -- Data: {azureData.ToJson()}");
 Console.ReadLine();
-
-// Todo: Fix logging using NLog 
-// Todo: USe IHttpFactoryClient to call api
