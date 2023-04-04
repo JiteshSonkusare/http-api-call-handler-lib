@@ -1,10 +1,11 @@
-﻿using HttpClientApiCaller.Client;
+﻿using NLog;
+using System.Net;
+using HttpClientApiCaller.Client;
 using HttpClientApiCaller.Exceptions;
+using HttpClientApiCaller.Helpers;
 using HttpClientApiCaller.Security;
 using HttpClientConsole.Configuration;
 using HttpClientConsole.Routes;
-using NLog;
-using System.Net;
 
 namespace HttpClientConsole.Clients
 {
@@ -30,13 +31,13 @@ namespace HttpClientConsole.Clients
                     Array.Empty<HeaderData>()
                 ).ConfigureAwait(false);
 
-            if (result.StatusCode != (int)HttpStatusCode.OK)
-            {
-                throw new GeneralApplicationException(result.Content);
-            }
+            if (result.StatusCode == (int)HttpStatusCode.NotFound)
+                return new Response<IList<Models.Sample>>(new ResponseData(HttpStatusCode.NotFound, new List<Models.Sample>().ToJson(), result.ResponseHeaders), HttpStatusCode.NotFound);
 
-            var response = new Response<IList<Models.Sample>>(result, result.StatusCode);
-            return response;
+            if (result.StatusCode == (int)HttpStatusCode.OK)
+                return new Response<IList<Models.Sample>>(result, result.StatusCode);
+
+            throw new GeneralApplicationException(result.Content);
         }
 
         protected override DefaultRequestHeaders GetDefaultRequestHeaders()
