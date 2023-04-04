@@ -1,16 +1,17 @@
-﻿using HttpClientApiCaller.Helpers;
+﻿using NLog;
 using HttpClientConsole.Clients;
-using HttpClientConsole.Configuration;
+using HttpClientApiCaller.Helpers;
 using Microsoft.Extensions.Options;
+using HttpClientConsole.Configuration;
 
 namespace HttpClientConsole.Service.Samples
 {
     internal class SampleService : ISampleService
     {
-        private SampleApiClientConfig _option;
-        private NLog.ILogger _logger;
+        private readonly SampleApiClientConfig _option;
+        private readonly ILogger _logger;
 
-        public SampleService(NLog.ILogger logger, IOptions<SampleApiClientConfig> option)
+        public SampleService(ILogger logger, IOptions<SampleApiClientConfig> option)
         {
             _option = option.Value;
             _logger = logger;
@@ -19,9 +20,10 @@ namespace HttpClientConsole.Service.Samples
         public async Task<IList<Models.Sample>> GetSampleData()
         {
             var client = new SampleApiClient(_logger, _option, null);
-            var result = await client.GetData(CancellationToken.None);
-            //_logger.Info(result.ToJson());
-            return result.Data;
+            var samples = await client.GetData(CancellationToken.None);
+            var result = samples.Data ?? new List<Models.Sample>();
+            _logger.Info($"Sample data : {result.ToJson()}");
+            return result;
         }
     }
 }

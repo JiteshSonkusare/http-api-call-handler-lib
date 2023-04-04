@@ -10,7 +10,7 @@ namespace HttpClientConsole.Clients
 {
     internal class SampleApiClient : ApiClientBase
     {
-        public SampleApiClient(ILogger logger, SampleApiClientConfig config, IAuthHandler authHandler) : base(logger, config, authHandler)
+        public SampleApiClient(ILogger logger, SampleApiClientConfig config, IAuthHandler? authHandler) : base(logger, config, authHandler)
         {
             if (config == null)
             {
@@ -19,7 +19,7 @@ namespace HttpClientConsole.Clients
             }
         }
 
-        public async Task<Response<IList<Models.Sample>>>? GetData(CancellationToken cancellation)
+        public async Task<Response<IList<Models.Sample>>> GetData(CancellationToken cancellation)
         {
             string endpointUri = SampleEndpoints.GetAll;
             ResponseData result = await Send(
@@ -35,7 +35,7 @@ namespace HttpClientConsole.Clients
                 throw new GeneralApplicationException(result.Content);
             }
 
-            Response<IList<Models.Sample>>? response = new Response<IList<Models.Sample>>(result, result.StatusCode);
+            var response = new Response<IList<Models.Sample>>(result, result.StatusCode);
             return response;
         }
 

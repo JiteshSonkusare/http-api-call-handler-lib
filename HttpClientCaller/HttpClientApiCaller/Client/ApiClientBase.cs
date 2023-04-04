@@ -11,10 +11,10 @@ namespace HttpClientApiCaller.Client
         private bool disposedValue;
         protected ILogger Logger { get; }
         private readonly IApiClientConfig _config;
-        private readonly IAuthHandler _authHandler;
+        private readonly IAuthHandler? _authHandler;
         private readonly SocketsHttpHandler httpHandler;
 
-        protected ApiClientBase(ILogger logger, IApiClientConfig config, IAuthHandler authHandler)
+        protected ApiClientBase(ILogger logger, IApiClientConfig config, IAuthHandler? authHandler)
         {
             Logger = logger;
             _config = config;
