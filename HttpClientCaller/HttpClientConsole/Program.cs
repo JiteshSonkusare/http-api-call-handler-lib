@@ -10,23 +10,16 @@ using HttpClientConsole.Service.Samples;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
+var logger = Logger();
+
 var host = Host.CreateDefaultBuilder()
     .ConfigureServices((context, services) =>
     {
-        var config = new ConfigurationBuilder()
-                    .SetBasePath(System.IO.Directory.GetCurrentDirectory())
-                    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-                    .Build();
-        LogManager.Configuration = new NLogLoggingConfiguration(config.GetSection("NLog"));
-        var logger = LogManager.Setup()
-                               .LoadConfigurationFromAppSettings()
-                               .GetCurrentClassLogger();
-
         services.Configure<SampleApiClientConfig>(context.Configuration.GetSection(nameof(SampleApiClientConfig)));
-        services.Configure<AzureApiClientConfig>(context.Configuration.GetSection(nameof(AzureApiClientConfig))); 
+        services.Configure<AzureApiClientConfig>(context.Configuration.GetSection(nameof(AzureApiClientConfig)));
         services.AddSingleton<ISampleService, SampleService>(
             serviceProvider => new SampleService(
-                logger : logger,
+                logger: logger,
                 option: serviceProvider.GetRequiredService<IOptions<SampleApiClientConfig>>())
             );
         services.AddSingleton<IAzureService, AzureService>(
@@ -45,3 +38,14 @@ Console.WriteLine($"Sample -- Api -- Data: {sampleData.ToJson()}");
 Console.WriteLine("---------------------------------------------------");
 Console.WriteLine($"Azure -- Api -- Data: {azureData.ToJson()}");
 Console.ReadLine();
+
+
+static Logger Logger()
+{
+    var config = new ConfigurationBuilder()
+                    .SetBasePath(System.IO.Directory.GetCurrentDirectory())
+                    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                    .Build();
+    LogManager.Configuration = new NLogLoggingConfiguration(config.GetSection("NLog"));
+    return LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
+}
